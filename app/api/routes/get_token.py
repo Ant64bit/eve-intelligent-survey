@@ -1,11 +1,8 @@
 # api/routes/get_token.py
 from fastapi import APIRouter
+import uuid
 
 router = APIRouter()
-import uuid
-# 3 routes
-
-# une route pour récupérer un token de session
 
 @router.post("/get_sessions_token", summary="Obtenir un token de session", tags=["Authentication"])
 def get_token() -> dict:

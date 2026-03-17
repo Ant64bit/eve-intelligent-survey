@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.api.routes import get_token
+from app.api.routes import get_token, get_user_humor, intelligent_survey
 
 app = FastAPI(
     title="Intelligent Survey API",
@@ -9,3 +9,5 @@ app = FastAPI(
 )
 
 app.include_router(get_token.router)
+app.include_router(get_user_humor.router)
+app.include_router(intelligent_survey.router)
