@@ -246,23 +246,17 @@ survey_answers
 
 ```
 intelligent-survey/
-├── data/
-│   └── decision_tree.json      # arbre de décision du client
 ├── app/
 │   ├── main.py
-│   ├── models/
-│   │   └── session.py          # modèles SQLAlchemy
+│   ├── core/
+│   │   └── *****
+│   ├── db/
+│   │   └── *****
 │   ├── routes/
-│   │   ├── session.py
-│   │   ├── humor.py
-│   │   └── survey.py
-│   ├── services/
-│   │   ├── humor_service.py    # scoring + détection tone
-│   │   ├── llm_service.py      # appels OpenAI + prompt builder
-│   │   └── survey_service.py   # navigation dans l'arbre JSON
-│   └── schemas/
-│       └── pydantic.py         # schémas de validation
-├── alembic/                    # migrations DB
+│   │   ├── get_token.py
+│   │   ├── get_user_humor.py
+│   │   └── intelligent_survey.py
 ├── docker-compose.yml
-└── README.md
+├── README.md
+└── requirements.txt
 ```
