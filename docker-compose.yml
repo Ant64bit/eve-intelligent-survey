@@ -1,0 +1,17 @@
+name: intelligent_survey
+services:
+  db:
+    image: postgres:16
+    container_name: IS_postgres_db
+    restart: on-failure
+    environment:
+      POSTGRES_USER: lpmia
+      POSTGRES_PASSWORD: projet_tut_01
+      POSTGRES_DB: intelligent_survey_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

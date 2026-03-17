@@ -1,0 +1,19 @@
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Variables d'environnement (ne jamais commit !)
+.env
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Distribution
+*.egg-info/
+dist/
+build/
