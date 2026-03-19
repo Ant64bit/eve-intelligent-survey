@@ -24,6 +24,10 @@ docker compose down      # supprime les conteneurs
 docker compose down -v   # supprime les conteneurs + les volumes (données perdues)
 ```
 
+```bash
+docker exec IS_postgres_db psql -U lpmia -d intelligent_survey_db -c "SELECT * FROM [nom_table];"     # liste toutes les données présente dans la table
+```
+
 # Compte rendu — Base de données
 
 ## Structure
