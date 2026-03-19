@@ -6,10 +6,10 @@ from app.services.db_connection import get_db_connection
 
 router = APIRouter()
 
-@router.post("/session/init", summary="Initialiser une session", tags=["Session"])
+@router.post("/session/init", summary="Initialize a session", tags=["Session"])
 def session_init() -> dict:
     """
-    Crée une nouvelle session et retourne le token uuid
+    Creates a new session and returns the uuid token
     """
     token = str(uuid.uuid4())
 
