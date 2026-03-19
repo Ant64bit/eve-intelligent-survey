@@ -24,239 +24,85 @@ docker compose down      # supprime les conteneurs
 docker compose down -v   # supprime les conteneurs + les volumes (données perdues)
 ```
 
----
+# Compte rendu — Base de données
 
-## Concept
+## Structure
 
-L'arbre de décision du client reste intact. Les boutons de réponse ne changent pas. Ce qui change : les questions sont reformulées selon le profil détecté de l'utilisateur, et le conseil final est contextualisé.
+La base de données repose sur deux tables PostgreSQL.
 
-```
-Profil formel / anxieux
-→ "Il est recommandé de consulter un professionnel de santé afin d'évaluer
-   vos douleurs articulaires et d'adapter votre pratique sportive."
+### Table `sessions`
 
-Profil casual / détendu
-→ "Honnêtement ? Vaut mieux voir un médecin du sport histoire de pas aggraver
-   le truc. Il pourra te dire exactement ce que tu peux continuer à faire."
-```
+Créée au premier appel API. Contient une ligne par utilisateur.
 
-Deux utilisateurs qui cliquent les mêmes boutons reçoivent une expérience différente.
-
----
-
-## Flux global
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ÉTAPE 1 — Détection du profil utilisateur                  │
-│                                                             │
-│  GET  /humor/question  →  question neutre (fixe)            │
-│  POST /humor/answer    →  réponse libre R1                  │
-│                                                             │
-│  GET  /humor/question  →  question reformulée (ton R1)      │
-│  POST /humor/answer    →  réponse libre R2                  │
-│                                                             │
-│  GET  /humor/question  →  question reformulée (ton R1+R2)   │
-│  POST /humor/answer    →  réponse libre R3                  │
-│                            │                                │
-│                            ▼                                │
-│               tone FINAL : casual / formal /                │
-│                            empathetic / humorous            │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  ÉTAPE 2 — Questionnaire santé personnalisé                 │
-│                                                             │
-│  GET  /survey/question                                      │
-│    → Python navigue dans l'arbre JSON                       │
-│    → LLM reformule la question (tone + historique)          │
-│    → Front affiche question + boutons                       │
-│                                                             │
-│  POST /survey/answer                                        │
-│    → Python reçoit la valeur du bouton cliqué               │
-│    → avance dans l'arbre JSON                               │
-│    → répété jusqu'au nœud feuille                           │
-│                            │                                │
-│                            ▼                                │
-│                  conseil brut (arbre client)                │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│  ÉTAPE 3 — Personnalisation du conseil final                │
-│                                                             │
-│  Entrées LLM :                                              │
-│    - conseil brut de l'arbre                                │
-│    - tone détecté                                           │
-│    - historique complet de la session                       │
-│                                                             │
-│  Sortie :                                                   │
-│    conseil enrichi, contextualisé, dans le ton détecté      │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Rôle du LLM
-
-| Étape | Ce que fait le LLM | Ce que le LLM ne fait PAS |
+| Colonne | Type | Description |
 |---|---|---|
-| `get_user_humor` | Reformule Q2 et Q3 — détecte le tone final | Poser Q1 (question fixe) |
-| `intelligent_survey` | Reformule chaque question (tone + historique) | Choisir le nœud suivant (Python + JSON) |
-| Conseil final | Enrichit et contextualise le conseil brut | Inventer un conseil |
-
-Le LLM n'a jamais accès à l'arbre entier. Il travaille toujours sur un contexte court et constant.
-
----
-
-## Contexte LLM par appel
-
-```
-Reformulation d'une question :
-  - tone détecté                     ~  50 tokens
-  - question brute du nœud courant   ~  30 tokens
-  - 3 dernières Q/R de la session    ~ 200 tokens
-  - instruction système              ~ 150 tokens
-  ─────────────────────────────────────────────────
-  Total                              ~ 430 tokens  ✅
-
-Personnalisation du conseil final :
-  - tone détecté                     ~  50 tokens
-  - conseil brut du client           ~ 100 tokens
-  - historique complet session       ~ 800 tokens
-  - instruction système              ~ 150 tokens
-  ─────────────────────────────────────────────────
-  Total                              ~ 1 100 tokens ✅
-```
-
-Taille constante quelle que soit la complexité de l'arbre.
+| `uuid` | uuid (PK) | Token généré par l'API au premier appel, identifiant unique de la session |
+| `ton` | varchar | Profil de ton détecté lors du questionnaire préliminaire (ex: tutoiement, vouvoiement, registre) |
+| `current_question_id` | varchar | Identifiant de la question en cours dans l'arbre de décision |
+| `created_at` | timestamp | Date de création de la session |
 
 ---
 
-## Détail — détection du tone (étape 1)
+### Table `session_history`
 
-```
-FRONT                          API                         LLM
-  │                             │                           │
-  │  GET /humor/question        │                           │
-  │ ─────────────────────────► │                           │
-  │ ◄───────────────────────── │  Q1 fixe (neutre)         │
-  │                             │                           │
-  │  POST /humor/answer (R1)    │                           │
-  │ ─────────────────────────► │                           │
-  │                             │  analyse R1 ─────────────►│
-  │                             │ ◄──────────────────────── │
-  │                             │  tone partiel détecté     │
-  │  GET /humor/question        │                           │
-  │ ─────────────────────────► │                           │
-  │                             │  Q2 reformulée ──────────►│
-  │ ◄───────────────────────── │  selon tone partiel       │
-  │                             │                           │
-  │  POST /humor/answer (R2)    │                           │
-  │ ─────────────────────────► │                           │
-  │                             │  analyse R1+R2 ──────────►│
-  │                             │ ◄──────────────────────── │
-  │                             │  tone affiné              │
-  │  GET /humor/question        │                           │
-  │ ─────────────────────────► │                           │
-  │                             │  Q3 reformulée ──────────►│
-  │ ◄───────────────────────── │  selon tone affiné        │
-  │                             │                           │
-  │  POST /humor/answer (R3)    │                           │
-  │ ─────────────────────────► │                           │
-  │                             │  analyse R1+R2+R3 ───────►│
-  │                             │ ◄──────────────────────── │
-  │                             │  tone FINAL stocké        │
-  │ ◄───────────────────────── │  { done: true, tone: X }  │
-```
+Alimentée à chaque réponse de l'utilisateur. Contient une ligne par étape du questionnaire.
 
-**Payload LLM à chaque étape :**
-
-```
-Q1 → rien                      (question fixe, pas d'appel LLM)
-
-Q2 → { reponse: R1,
-        question_base: "...",
-        instruction: "reformule en adoptant le style de l'utilisateur" }
-
-Q3 → { reponses: [R1, R2],
-        question_base: "...",
-        instruction: "même instruction + tone plus précis" }
-
-Après R3 → { reponses: [R1, R2, R3],
-              instruction: "détermine le tone final parmi :
-                            casual / formal / empathetic / humorous" }
-```
+| Colonne | Type | Description |
+|---|---|---|
+| `id` | int (PK) | Identifiant auto-incrémenté |
+| `uuid` | uuid (FK) | Référence vers la session dans la table `sessions` |
+| `question_id` | varchar | Identifiant de la question dans l'arbre JSON (ex: `q4`) |
+| `question_reformulee` | text | Texte de la question tel qu'il a été reformulé par le LLM et affiché à l'utilisateur |
+| `options_proposees` | jsonb | Liste des boutons affichés à l'utilisateur, générée par le LLM depuis l'arbre |
+| `reponse_utilisateur` | varchar | Identifiant de l'option choisie par l'utilisateur (ex: `q4_b`) |
+| `step_order` | int | Numéro de l'étape dans le parcours (1, 2, 3...) |
+| `answered_at` | timestamp | Date et heure de la réponse |
 
 ---
 
-## Stack technique
+## Flux de fonctionnement
 
-| Composant | Technologie |
-|---|---|
-| API | Python / FastAPI |
-| Base de données | PostgreSQL 16 (Docker) |
-| LLM | OpenAI GPT |
-| Navigation arbre | Python pur (JSON statique) |
+### 1. Premier appel API — initialisation
 
----
+Le frontend appelle une route dédiée (ex: `POST /session/init`). L'API génère un `uuid` et crée une ligne vide dans `sessions`. Ce `uuid` est retourné au frontend qui le conserve pour tous les appels suivants.
 
-## Modèle de données
+### 2. Chaque réponse utilisateur — mise à jour
+
+Quand l'utilisateur clique sur un bouton, le frontend envoie à l'API :
+- le `uuid` de la session
+- le `question_id` de la question courante
+- la réponse choisie (`reponse_utilisateur`)
+
+L'API effectue alors deux opérations :
+- **INSERT** d'une nouvelle ligne dans `session_history` avec toutes les données de l'étape
+- **UPDATE** de `current_question_id` dans `sessions` pour refléter l'avancement
+
+### 3. Chaque appel au LLM — construction du contexte
+
+Avant d'appeler le LLM, l'API reconstruit l'historique complet de la session avec :
 
 ```sql
-sessions
-  id            UUID
-  tone          VARCHAR   -- casual / formal / empathetic / humorous
-  current_node  VARCHAR   -- position courante dans l'arbre JSON
-  status        VARCHAR   -- pending_humor / in_survey / done
-  created_at    TIMESTAMP
-
-humor_answers
-  id            UUID
-  session_id    UUID  → sessions
-  question_id   INT        -- 1, 2 ou 3
-  answer        TEXT
-  answered_at   TIMESTAMP
-
-survey_answers
-  id            UUID
-  session_id    UUID  → sessions
-  node_id       VARCHAR    -- référence au nœud JSON
-  question_llm  TEXT       -- question reformulée par le LLM
-  answer        VARCHAR    -- valeur du bouton cliqué
-  answered_at   TIMESTAMP
+SELECT * FROM session_history
+WHERE uuid = '...'
+ORDER BY step_order ASC;
 ```
 
----
+Cet historique est ensuite injecté dans le prompt avec l'arbre de décision JSON complet. Le LLM détermine lui-même la question suivante et les options à proposer en fonction des réponses précédentes, sans qu'aucune logique de navigation ne soit codée côté Python.
 
-## Routes API
+### 4. Réponse du LLM — format structuré
 
-| Méthode | Route | Description |
-|---|---|---|
-| `POST` | `/session` | Crée une session, retourne un UUID |
-| `GET` | `/humor/question` | Retourne la prochaine question d'humeur |
-| `POST` | `/humor/answer` | Enregistre une réponse — calcule le tone après R3 |
-| `GET` | `/survey/question` | Retourne la question courante reformulée |
-| `POST` | `/survey/answer` | Enregistre la réponse, avance dans l'arbre |
+Le LLM retourne toujours un JSON structuré du type :
 
----
-
-## Structure du projet
-
+```json
+{
+  "question_id": "q4",
+  "question_reformulee": "Est-ce que tu ressens cette douleur plutôt le matin ou le soir ?",
+  "options": [
+    { "id": "q4_a", "label": "Plutôt le matin" },
+    { "id": "q4_b", "label": "Plutôt le soir" },
+    { "id": "q4_c", "label": "Les deux" }
+  ]
+}
 ```
-intelligent-survey/
-├── app/
-│   ├── main.py
-│   ├── core/
-│   │   └── *****
-│   ├── db/
-│   │   └── *****
-│   ├── routes/
-│   │   ├── get_token.py
-│   │   ├── get_user_humor.py
-│   │   └── intelligent_survey.py
-├── docker-compose.yml
-├── README.md
-└── requirements.txt
-```
+
+L'API valide que les `id` des options existent bien dans l'arbre JSON avant de renvoyer la réponse au frontend. Le frontend affiche les boutons dynamiquement sans connaître l'arbre — si l'ostéopathe modifie son arbre, aucun changement n'est nécessaire côté frontend.
