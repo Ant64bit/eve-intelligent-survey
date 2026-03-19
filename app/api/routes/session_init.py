@@ -4,9 +4,9 @@ from fastapi import APIRouter
 import uuid
 from app.services.db_connection import get_db_connection
 
-router = APIRouter()
+router = APIRouter(prefix="/session", tags=["Session"])
 
-@router.post("/session/init", summary="Initialize a session", tags=["Session"])
+@router.post("/init", summary="Initialize a session")
 def session_init() -> dict:
     """
     Creates a new session and returns the uuid token
