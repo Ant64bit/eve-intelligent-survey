@@ -1,6 +1,7 @@
 # app/main.py
+
 from fastapi import FastAPI
-from app.api.routes import get_token, get_user_humor, intelligent_survey
+from app.api.routes import session_init, survey_question, user_tone
 
 app = FastAPI(
     title="Intelligent Survey API",
@@ -8,6 +9,6 @@ app = FastAPI(
     version="0.1.0",
 )
 
-app.include_router(get_token.router)
-app.include_router(get_user_humor.router)
-app.include_router(intelligent_survey.router)
+app.include_router(session_init.router)
+app.include_router(user_tone.router)
+app.include_router(survey_question.router)
