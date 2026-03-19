@@ -11,9 +11,3 @@ def get_token() -> dict:
     """
     token = str(uuid.uuid4())
     return {"token": token}
-
-
-# une route pour obtenir l'humeur de l'utilisateur
-
-
-# une route pour boucler sur le questionnaire
