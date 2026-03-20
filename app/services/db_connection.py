@@ -8,7 +8,7 @@ load_dotenv()
 
 conn = None
 
-def init_connection():
+def init_db_connection():
     global conn
     retries = 5
     while retries > 0:

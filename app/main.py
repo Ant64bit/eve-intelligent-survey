@@ -1,9 +1,12 @@
 # app/main.py
 from fastapi import FastAPI
-from app.api.routes import session_init, survey_question, user_tone
-from app.services.db_connection import init_connection
+from app.api.routes import session_init, survey_question
+from app.services.db_connection import init_db_connection
+from app.services.llm_client import init_llm_client
 
-init_connection()
+# Initialize DB connection and LLM client at startup
+init_db_connection()
+init_llm_client()
 
 app = FastAPI(
     title="Intelligent Survey API",
