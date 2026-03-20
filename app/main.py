@@ -12,5 +12,4 @@ app = FastAPI(
 )
 
 app.include_router(session_init.router)
-app.include_router(user_tone.router)
 app.include_router(survey_question.router)
