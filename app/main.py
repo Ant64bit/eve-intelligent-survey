@@ -1,7 +1,9 @@
 # app/main.py
-
 from fastapi import FastAPI
 from app.api.routes import session_init, survey_question, user_tone
+from app.services.db_connection import init_connection
+
+init_connection()
 
 app = FastAPI(
     title="Intelligent Survey API",

@@ -4,7 +4,7 @@ API REST Python/FastAPI qui personnalise un questionnaire de santé physique (ar
 
 ---
 
-## Lancement
+## Lancement (dans l'ordre important !)
 
 ```bash
 # Démarrer la base de données
@@ -12,7 +12,7 @@ docker compose up -d
 
 # Lancer l'API
 cd PROJET_TUT_01
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 
 **Commandes Docker utiles**

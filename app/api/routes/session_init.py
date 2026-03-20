@@ -1,7 +1,6 @@
 # api/routes/session_init.py
-
-from fastapi import APIRouter
 import uuid
+from fastapi import APIRouter
 from app.services.db_connection import get_db_connection
 
 router = APIRouter(prefix="/session", tags=["Session"])
@@ -18,6 +17,4 @@ def session_init() -> dict:
     cursor.execute("INSERT INTO sessions (uuid) VALUES (%s)", (token,))
     conn.commit()
     cursor.close()
-    conn.close()
-
     return {"token": token}
