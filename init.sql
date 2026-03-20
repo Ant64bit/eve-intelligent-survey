@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS sessions (
     uuid UUID PRIMARY KEY,
-    ton VARCHAR(50),
+    ton TEXT,
     current_question_id VARCHAR(50),
     created_at TIMESTAMP DEFAULT NOW()
 );
